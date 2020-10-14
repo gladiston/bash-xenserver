@@ -1,7 +1,7 @@
 # bash-xenserver
-<p>Conjunto de scripts bash para adminstrar servidores XENSERVER.</p>
-<p>Backup em discos externos, onde cada disco é inicializado e não pode um disco ser <p>usado para outro servidor xen, se isso acontecer o disco será rejeitado.</p>
-<p>As operações completas capaz de faxer são:</p>
+<p>Conjunto de scripts bash para adminstrar servidores XENSERVER.<br/>
+Backup em discos externos, onde cada disco é inicializado e não pode um disco ser usado para outro servidor xen, se isso acontecer o disco será rejeitado.<br/>
+As operações completas capaz de faxer são:</p>
 *  Realizar o backup completo agora<br/>
 *  Observar se há backup em andamento<br/>
 *  Observar se a mídia de backup está online<br/>
