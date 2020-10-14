@@ -1,5 +1,4 @@
-# bash-xenserver
-Conjunto de scripts bash para adminstrar servidores XENSERVER.
+Conjunto de scripts para administrar servidores XEN.
 Backup em discos externos, onde cada disco é inicializado e não pode um disco ser usado para outro servidor xen, se isso acontecer o disco será rejeitado.
 As operações completas capaz de faxer são:
   Realizar o backup completo agora
@@ -15,4 +14,4 @@ As operações completas capaz de faxer são:
   Editar agendamentos
   Testar o acesso a internet
   Testar o envio de email
-Mais importante que as funcionalidades do menu acima, são as funções contidas na biblioteca.
+Mais importante que as funcionalidades do menu acimma, são as funções contidas na biblioteca.
