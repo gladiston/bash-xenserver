@@ -213,6 +213,13 @@ echo "date -s \"$inet_day $inet_month $cur_year $inet_time\""
 echo "hwclock --systohc --utc # para salvar na BIOS"
 echo "3) Para evitar essas situações é bom instalar o XenServer"
 echo "sem o suporte ao NTP e colocar no crontab algo assim:"
+<<<<<<< HEAD
 echo "00 12 * * * /usr/sbin/ntpdate -u pool.ntp.br"
 echo "00 07 * * * /usr/sbin/ntpdate -u pool.ntp.br"
 echo "Assim a hora atual será atualizada conforme a referencia NTP."
+=======
+echo "00 12 * * * /usr/sbin/ntpdate -u pool.ntp.br "
+echo "00 07 * * * /usr/sbin/ntpdate -u pool.ntp.br "
+echo "Assim em horarios programados o horario será atualizado "
+echo "conforme o padrao local."
+>>>>>>> 4e1081cfbe7bfdf82b391a7f021108f37280f49e
