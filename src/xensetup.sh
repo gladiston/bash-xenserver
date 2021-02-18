@@ -1,7 +1,7 @@
 #!/bin/bash
-mailhub="192.168.1.251"
-maildom="vidy.local"
-maildom_to="vidy.com.br"
+mailhub="192.168.1.xxx"  # IP do SMTP
+maildom="dominio.local" # Dominio da rede local
+maildom_to="dominio.com.br" # Dominio externo
 repository_update=1
 time_zone_new="America/Recife"
 sshd_config="/etc/ssh/sshd_config"
@@ -125,17 +125,6 @@ if [ $crontatab_check_time -eq 0 ] ; then
   echo "Se estiver usando NTP, mantenha o # para ignorar a atualização manual nestes horarios."
 fi
 
-old_time_zone=$(timedatectl status|grep "Time zone"|cut -d":" -f2|cut -d"(" -f1)
-if ! [ "$old_time_zone" = "$time_zone_new" ] ; then
-  echo "Desabilitando o horario de verão"
-  echo "O correto seria 'America/Sao_Paulo', mas vamos mudar para $time_zone_new porque o XenServer nessa versão não tem comando para desabilitar o horario de verão"
-  echo "Configuração atual:"
-  timedatectl status
-  timedatectl set-timezone $time_zone_new
-  echo "Configuração após ajuste:"
-  timedatectl status
-fi
-
 # SSH configurado para permitir edições via streamming
 if [ -f "$sshd_config" ] ; then
   # Para acesso por estacoes windows, instale o OpenSSH, inicie as Configurações 
@@ -210,19 +199,20 @@ if [ $admin_is_here -gt 0 ] ; then
   fi    
 fi
 
-
+inet_date=$(ntpdate -q time.google.com | sed -n 's/ ntpdate.*//p') #18 Feb 14:06:04
+inet_day=$(echo $inet_date|cut -d" " -f1)
+inet_month=$(echo $inet_date|cut -d" " -f2)
+inet_time=$(echo $inet_date|cut -d" " -f3)
 cur_date=$(date)
-echo "A data atual é $cur_date."
+cur_year=$(echo $cur_date|rev|cut -d" " -f1|rev)
+echo "A data na internet é $inet_date."
+echo "A data no sistema é $cur_date."
 echo "Se a data acima estiver incorreta então siga as instruções:"
-echo "1) para ver o horario na BIOS:"
-echo "hwclock --show"
-echo "2) para corrigir para o horario certo:"
-echo "date -s \"25  JAN 2021 14:00:00\""
-echo "3) Para transferir o horario certo para a BIOS:"
-echo "hwclock --systohc --utc"
-echo "4) Para evitar essas situações é bom instalar o XenServer"
+echo "Para corrigir para o horario certo:"
+echo "date -s \"$inet_day $inet_month $cur_year $inet_time\""
+echo "hwclock --systohc --utc # para salvar na BIOS"
+echo "3) Para evitar essas situações é bom instalar o XenServer"
 echo "sem o suporte ao NTP e colocar no crontab algo assim:"
-echo "00 12 * * * /usr/sbin/ntpdate -u pool.ntp.br #192.168.1.6"
-echo "00 07 * * * /usr/sbin/ntpdate -u pool.ntp.br #192.168.1.6"
-echo "Assim em horarios programados o horario será atualizado "
-echo "conforme o padrao local."
+echo "00 12 * * * /usr/sbin/ntpdate -u pool.ntp.br"
+echo "00 07 * * * /usr/sbin/ntpdate -u pool.ntp.br"
+echo "Assim a hora atual será atualizada conforme a referencia NTP."
