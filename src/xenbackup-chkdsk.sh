@@ -40,6 +40,7 @@ fi
 
 # Iniciando o scandisk
 /sbin/fsck -vfy $backup_dev_disk
+/sbin/e2label $backup_dev_disk xenbackup
 
 exit $?
 

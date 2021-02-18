@@ -61,13 +61,16 @@ for CURRENT_PARAM in "$@" ; do
   if [[ "$CURRENT_PARAM" =~ "^-min:" ]] ; then 
     _MIN_SIZE=$(eval echo "$CURRENT_PARAM"|cut -d':' -f2)
     # Se nao retornar nenhum numero então...
-    if ! [[ $_MIN_SIZE =~ '^[0-9]+$' ]] ; then
+    #if ! [[ $_MIN_SIZE =~ '^[0-9]+$' ]] ; then
+    if ! is_number $_MIN_SIZE ; then 
        echo "Não foi possivel entender o parametro: $CURRENT_PARAM" >&2
-       echo "Variavel _MIN_SIZE não é um numero." >&2
+       echo "Variavel _MIN_SIZE=$_MIN_SIZE não é um numero." >&2
        exit 2
     fi    
   fi  
 done
+
+
 if [ "$PARAM_LISTA_VMS" == "" ] ; then
   PARAM_LISTA_VMS="/tmp/xenbackup-lista-local-$$.txt"
   echo "Debug: $_SCRIPT_XENBACKUPESTIMATE -local |grep -v \"Total estimado\" 2>&1 | tee \"$PARAM_LISTA_VMS\"   " 1>&2;
@@ -80,7 +83,9 @@ echo "Limpeza de backups velhos de VMs iniciado em  $_DATE_START"
 
 # Montando a midia de backup
 already_mount=0
+
 is_mount_disk "$_MEDIABACKUP"
+
 [ $? -gt 0 ] && already_mount=1
 if [ $already_mount -eq 0 ] ; then
   echo "Montando $_MEDIABACKUP..."
@@ -94,22 +99,20 @@ lixo=( "${lixo[@]}" "$_MEDIABACKUP/lixo" )
 [ -f "$temp_file" ] && rm -f "$temp_file"
 echo "Debug: space_estimate \"$PARAM_LISTA_VMS\""  1>&2;
 _WANT_SPACE=$(space_estimate "$PARAM_LISTA_VMS")
+#echo "Debug: _WANT_SPACE=$_WANT_SPACE" 1>&2;
+[ "$_WANT_SPACE" == "" ] && _WANT_SPACE=$_MIN_SIZE;
 
 # Se nao retornar nenhum numero então...
-if ! [[ $_WANT_SPACE =~ '^[0-9]+$' ]] ; then
-   if [ $_MIN_SIZE -gt 0 ] ; then
-     _WANT_SPACE=$_MIN_SIZE
-   else
-     echo "Não foi possivel estimar o tamanho necessário para o backup: $_WANT_SPACE" 1>&2;
-     echo "Variavel _WANT_SPACE não é um numero." 1>&2;
-     exit 2
-   fi
+if ! is_number $_WANT_SPACE ; then
+   echo "Não foi possivel estimar o tamanho necessário para o backup: $_WANT_SPACE" 1>&2;
+   echo "Variavel _WANT_SPACE não é um numero." 1>&2;
+   exit 2
 fi
-
 
 if [ $_WANT_SPACE -lt $_MIN_SIZE ] ; then
   _WANT_SPACE=$_MIN_SIZE
 fi
+
 
 #_WANT_SPACE=$($_SCRIPT_XENBACKUPESTIMATE "$ESTIM_PARAM" "GB"|grep "Total estimado"|cut -d':' -f2|cut -d'G' -f1|tr -d ' ')
 echo "Tamanho estimado para backup $ESTIM_PARAM: $_WANT_SPACE GB" 
@@ -126,7 +129,7 @@ find "$_MEDIABACKUP"  -type f -regex ".*/.*\.\(xva\)"|sort > "$temp_file"
 
 COUNT=0
 EXISTE_ESPACO=0
-echo "Debug: space_free \"$_MEDIABACKUP\" \"GB\""
+#echo "Debug: space_free \"$_MEDIABACKUP\" \"GB\""
 space_free "$_MEDIABACKUP" "GB"
 DevFilesystem1=$DevFilesystem
 DevBlocks1k1=$DevBlocks1k
@@ -142,16 +145,16 @@ echo -e "Espaço no disco de backup antes da limpeza em $DevFilesystem1:"
 echo -e "\tEspaço usado: $DevUsed1 GB ($DevUsePerc1%)"
 echo -e "\tEspaço disp.: $DevAvailable1 GB"
 echo -e "\tEspaço  req.: $_WANT_SPACE GB"
-espaco_disponivel=$DevAvailable1
+
 # Se nao retornar nenhum numero para a variavel então...
-if ! [[ $espaco_disponivel =~ '^[0-9]+$' ]] ; then
-   echo "Não foi possivel calcular o espaço disponivel no disco para realização do backup: $espaco_disponivel GB" >&2
-   echo "Variavel [espaco_disponivel] não é um numero." >&2
+if ! is_number $DevAvailable1 ; then
+   echo "Não foi possivel calcular o espaço disponivel no disco para realização do backup: $DevAvailable1 GB" >&2
+   echo "Variavel [DevAvailable1] não é um numero." >&2
    exit 2
 fi
 
 echo "Espaço arbitrado como sendo necessário para realizar backup: $_WANT_SPACE GB." 
-if [ $espaco_disponivel -gt $_WANT_SPACE ]; then
+if [ $DevAvailable1 -gt $_WANT_SPACE ]; then
   EXISTE_ESPACO=1
   echo "Espaço no disco de backup suficiente para o próximo backup, ignorando limpeza." 
 fi
@@ -177,9 +180,10 @@ while read current_file ; do
 	#echo -e "\tEspaço disp.: $DevAvailable2 GB"
 	#echo -e "\tEspaço  req.: $_WANT_SPACE GB"
     # Se nao retornar nenhum numero para a variavel então...
-    if ! [[ $espaco_disponivel =~ '^[0-9]+$' ]] ; then
+    #if ! [[ $espaco_disponivel =~ '^[0-9]+$' ]] ; then
+    if ! is_number $espaco_disponivel ; then    
        echo "Não foi possivel calcular o espaço disponivel no disco para realização do backup: $espaco_disponivel" >&2
-       echo "Variavel [espaco_disponivel] não é um numero." >&2
+       echo "Variavel [espaco_disponivel]=$espaco_disponivel não é um numero." >&2
        exit 2
     fi
     if [ $espaco_disponivel -gt $_WANT_SPACE ]; then

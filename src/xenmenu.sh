@@ -69,9 +69,10 @@ do
   echo "6- Editar lista de discos aceitos como mídia de backup "
   echo "7- Limpar Backups antigos"
   echo "8- Limpar snaphosts"
-  echo "9- Checar o disco de backup e corrigir"
+  echo "9- Checar e conferir o disco de backup"
   echo "10-Enviar listagem da mídia de backup por email"
   echo "11-Editar agendamentos"
+  echo "12-VMs com inicio automatico apos boot do xenserver"
   echo "90-Testar o acesso a internet"
   echo "91-Testar o envio de email"
   echo "97-Desligar"
@@ -90,8 +91,8 @@ do
   4)$_SCRIPT_XENVMLIST;
     echo "Tecle [ENTER] para retornar.";
     read espera;;
-  5)editar /$_XENPATH/xenbackup-list.txt;;
-  6)editar /$_XENPATH/xendisk.sh;;
+  5)editar $_XENPATH/xenbackup-list.txt;;
+  6)editar $_XENPATH/xendisk.sh;;
   7)$_SCRIPT_XENCLEAN
     echo "Tecle [ENTER] para retornar.";
     read espera;;
@@ -102,6 +103,16 @@ do
     read espera;;
   10)read_backup_disk;;
   11)crontab -e;;
+  12) if [ -f "/etc/xenboot-lista.txt" ] ; then
+	      editar "/etc/xenboot-lista.txt"
+        $_SCRIPT_XENSTART_VM	"/etc/xenboot-lista.txt"		
+      else
+		    echo "# Lista das VMs que poderao ter inicio automatico" >"/etc/xenboot-lista.txt"
+		    echo "# apos o boot do xenserver." >>"/etc/xenboot-lista.txt"
+		    echo "# Formato:" >>"/etc/xenboot-lista.txt"
+		    echo "# VM_NAME [true/false]" >>"/etc/xenboot-lista.txt"
+     fi	 
+     press_enter_to_continue;;
   90)$_XENPATH/testar_internet_basic.sh;
     echo "Tecle [ENTER] para retornar.";
     read espera;;

@@ -1,4 +1,4 @@
-#!/bin/bash
+# #####!/bin/bash
 #
 # Este script testa a funcionalidade de envio de email por este computador.
 # Para que essa funcionalidade funcione perfeitamente, o ssmtp deve estar 
@@ -11,7 +11,7 @@
 #    #rewriteDomain=
 #    # hostname=_HOSTNAME_
 # em seu lugar, acrescentar as linhas :
-#    mailhub=192.168.1.13
+#    mailhub=192.168.1.251
 #    rewriteDomain=vidy.com.br
 #    hostname=[nomedohost].vidy.local   # ou
 #    hostname=_HOSTNAME_.vidy.local
@@ -32,6 +32,11 @@ function init_vars() {
   [ -z $_SCRIPT_XENVMLIST ] && _SCRIPT_XENVMLIST="$_XENPATH/xenvmlist.sh"  
   [ -z $_SCRIPT_XENBACKUP2EMAIL ] && _SCRIPT_XENBACKUP2EMAIL="$_XENPATH/xenbackup2email.sh"
   [ -z $_SCRIPT_XENBACKUPESTIMATE ] && _SCRIPT_XENBACKUPESTIMATE="$_XENPATH/xenbackup-estimate.sh"
+  [ -z $_SCRIPT_XENSTART_VM ] && _SCRIPT_XENSTART_VM="$_XENPATH/xenstart_vm.sh"
+  [ -z $_SCRIPT_XENSTARTONBOOT ] && _SCRIPT_XENSTARTONBOOT="$_XENPATH/xenstart-on-boot.sh"
+  
+  
+  
   [ -z $_MAILTO ] && _MAILTO="suporte@vidy.com.br"
   [ -z $_HOST_UUID ] && _HOST_UUID=$(xe host-list params=uuid hostname=$HOSTNAME|cut -d':' -f2|grep -v '^$'|tr -d '^ ')
   [ -z $_POOL_UUID ] && _POOL_UUID=$(xe pool-list params=uuid|cut -d':' -f2|grep -v '^$'|tr -d '^ ')
@@ -54,8 +59,7 @@ function init_vars() {
 function wecho() { 
   local msg
 	msg=$1
-  echo -ne "$msg"
-	echo -ne "$msg"|/usr/bin/wall  
+  echo -ne "$msg\n"
 }
 
 
@@ -76,14 +80,14 @@ function sair() {
   # Finalizando o backup
   local date_finish=$(date +%Y-%m-%d+%H_%M)
   local msg_subject=""
-  local	msg_text="Encerrado com sinal [$EXIT_STATUS] em $date_finish"
+  local	msg_text="Script $0 encerrado com sinal [$EXIT_STATUS] em $date_finish"
 	msg_text="$msg_text\nNome: ${0##*/}"
 	msg_text="$msg_text\nCaminho: ${0%/*}"
   msg_text="$msg_text\nNome completo: ${0}"  
   msg_text="$msg_text\nArgumentos: ${@}"
   msg_text="$msg_text\nPoderá consultar o log de backup no arquivo:"
   msg_text="$msg_text\n$_LOG_FILE"
-  wecho $msg_text
+  echo -ne "$msg_text\n"
   # Finalizando com uma limpeza da midia
   # removendo cópias velhas
   if [ -f "$_LOG_FILE" ] ; then
@@ -127,41 +131,6 @@ function sair() {
   exit $errorcode
 }
 
-
-# function log() {
-  # local log_date="`date +%Y-%m-%d+%H:%M`"
-  # local frase="$1"
-  # if [ -z "$_LOG_FILE" ] || [ "$_LOG_FILE" == "" ] ; then
-     # _LOG_FILE="/var/logs/xen"
-     # if ! [ -d "$LOGS" ] ; then
-       # mkdir -p "$LOGS"
-     # fi
-     # _LOG_FILE="/var/log/xen/xenbackup-$log_date.log"
-  # fi
-
-  # if [ -z "$1" ] || [ "$1" == "" ] ; then
-    # echo "Parametro para log esta vazio"
-    # return
-  # fi
-  
-  # local temp_log="$2"
-  # if [ -z "$temp_log" ] || [ "$temp_log" == "" ] ; then
-    # temp_log="$_LOG_FILE"
-  # fi
-  
-  # if ! [ -f "$temp_log" ] ; then
-    # echo "Arquivo para registrar log [$temp_log]  não existe !"
-    # echo -ne "Criando um arquivo vazio..."
-    # touch "$temp_log"
-    # echo "[OK]"
-  # fi
-  # local echo_opt="-e "  
-  # if [[ $frase = *$"\n"* ]] ; then
-    # echo_opt="-ne " 
-  # fi
-  # echo $echo_opt "$frase" 2>&1 | tee -a "$temp_log"
-# }
-
 function semremarks() {
   local PARAMLINHA="$1"
   PARAMLINHA=${PARAMLINHA%% }
@@ -192,7 +161,7 @@ function folder_contents() {
     return 2
   fi
   ls -RtlhgG "$WHEREIS" | awk 'BEGIN{OFS="\t"}{print $5" "$4,$6,$3,$7}'|sort > "$FILE_TMP" 
-  echo -ne "Conteúdo da pasta [$WHEREIS] "
+  echo -ne "Conteúdo da pasta [$WHEREIS] " 
   if [ "$PARTIAL_NAME" != " " ] ; then
     echo -ne "[$PARTIAL_NAME]" 
   fi
@@ -212,23 +181,112 @@ function folder_contents() {
   fi
 }
 
-#if is_integer $1; then
-#    echo "$1 is an integer"
-#else
-#    echo "$1 is not an integer"
-#fi
 function is_integer() {
-re='^[0-9]+$'  # Inteiro
-re='^[0-9]+([.][0-9]+)?$'  # numero
-re='^-?[0-9]+([.][0-9]+)?$' # numero negativo
-if ! [[ $1 =~ $re ]] ; then
-  return 1
-else 
-  return 0
-fi
-
+  local ret
+  local re
+  #if is_integer $1; then
+  #    echo "$1 is an integer"
+  #else
+  #    echo "$1 is not an integer"
+  #fi
+  ret=0;
+  re='^[0-9]+$'  # Inteiro
+  re='^[0-9]+([.][0-9]+)?$'  # numero
+  re='^-?[0-9]+([.][0-9]+)?$' # numero negativo
+  if ! [[ $1 =~ $re ]] ; then
+    ret=1
+  fi
+  return $ret
 }
 
+function is_number() {
+  local ret
+  local re
+  #if is_number $1; then
+  #    echo "$1 is an integer"
+  #else
+  #    echo "$1 is not an integer"
+  #fi
+  ret=0;
+  re='^[0-9]+$'  # Inteiro
+  re='^[0-9]+([.][0-9]+)?$'  # numero
+  re='^-?[0-9]+([.][0-9]+)?$' # numero negativo
+  if [[ $1 =~ $re ]] ; then
+    ret=0
+  else 
+    ret=1
+  fi
+  return $ret
+  #echo $ret
+}
+
+function xen_vm_exist() {
+  #if xen_vm_exist "WinXP_Custos"; then
+  #    echo "WinXP_Custos existe"
+  #else
+  #    echo "WinXP_Custos nao existe"
+  #fi
+  local ret
+  local vm_name
+  local count
+  vm_name=$1
+  count=$(xe vm-list name-label="$vm_name"|wc -l)
+  if [ $count -gt 0 ] ; then
+    ret=0   
+    #echo "Conferindo se $VM_NAME existe: Sim" 1>&2;
+  else
+    ret=1
+    #echo "Conferindo se $VM_NAME existe: Nao" 1>&2;
+  fi
+  return $ret
+}
+
+function xen_vm_running() {
+  #if xen_vm_running "WinXP_Custos"; then
+  #    echo "WinXP_Custos esta rodando"
+  #else
+  #    echo "WinXP_Custos esta parada"
+  #fi
+  local ret
+  local vm_name
+  local vm_existe
+  vm_name=$1
+  vm_existe=$(xe vm-list name-label="$vm_name"|wc -l)
+  if [ $vm_existe -eq 0 ] ; then
+    echo "VM $vm_name nao existe." 1>&2;
+    return 0
+  fi
+  
+  vm_existe=$(xe vm-list name-label="$vm_name"|grep "running"|wc -l)
+  if [ $vm_existe -gt 0 ] ; then
+    ret=0
+    #echo "Conferindo se $VM_NAME esta rodando: Sim" 1>&2;
+  else
+    ret=1
+    #echo "Conferindo se $VM_NAME esta rodando: Nao" 1>&2;
+  fi
+  return $ret
+}
+
+
+function trunc() {
+  # Trunca a parte inteira se o valor estiver fracionado
+  # modo de usar:
+  # num_inteiro=$(trunc 1234.56)
+  ret=$1;
+  if [[ $ret == *"."* ]]; then
+    ret=$(echo "$ret"|cut -d'.' -f1)
+  fi
+  echo $ret  
+}
+
+function trim() {
+  # Limpa os espaços em branco a direita e esquerda do parametro indicado
+  # trimmed=$(echo "   LOL   ")
+  ret=$1;
+  ret=$(echo -e "${ret}" | tr -d '[:space:]')
+  echo $ret  
+}
 
 function is_mount_disk() {
   # Retorna >0 se uma pasta estiver montada, ex:
@@ -247,14 +305,14 @@ function is_mount_disk() {
   if [ "$lastchar" == "/" ] ; then
     check_point=$(echo "${check_point%?}")
   fi
-  #echo "Testando a montagem de $check_point"
+  #echo "Testando a montagem de $check_point" 1>&2;
   local mounted=$(/bin/mount|grep "$check_point"|grep -v "grep "|wc -l)
   if [ $mounted -gt 0 ] ; then
-    #echo "Testando a montagem de $check_point [ \$? -gt 0 ]" >&2
+    #echo "Testando a montagem de $check_point [ \$? -gt 0 ]" 1>&2;
     is_mount_disk=1 
     return 1
   else
-    #echo "Testando a montagem de $check_point [ \$? -le 0 ]" >&2
+    #echo "Testando a montagem de $check_point [ \$? -le 0 ]" 1>&2;
     is_mount_disk=0
     return 0
   fi
@@ -262,6 +320,8 @@ function is_mount_disk() {
 
 function mount_disk() {
   local mounted
+  local backup_dev_disk
+  backup_dev_disk=""
   # Criando a pasta de montagem da unidade de backup
   if ! [ -d "$_MEDIABACKUP" ] ; then
     mkdir -p "$_MEDIABACKUP" 
@@ -278,9 +338,9 @@ function mount_disk() {
   is_mount_disk "$_MEDIABACKUP"
   mounted=$?
   if [ $mounted -gt 0 ]; then 
-      echo "A pasta [$_MEDIABACKUP] encontra-se montada e não consigo desmontada. Chame o administrador para verificar este problema." >&2
-      echo "Teste a instrução : umount $_MEDIABACKUP" >&2
-      return $mounted;
+    echo "A pasta [$_MEDIABACKUP] encontra-se montada e não consigo desmontada. Chame o administrador para verificar este problema." >&2
+    echo "Teste a instrução : umount $_MEDIABACKUP" >&2
+    return $mounted;
   fi
 
   # Procura se algum dos discos alistados para backup estao presentes no sistema
@@ -297,10 +357,10 @@ function mount_disk() {
   /bin/mount -t auto "$backup_dev_disk" "$_MEDIABACKUP"
   is_mount_disk "$_MEDIABACKUP"
   mounted=$?
-  if [ $? -gt 0 ]; then 
-    echo "Midia montada com sucesso : $backup_dev_disk em $_MEDIABACKUP  [ \$? -gt 0 ]" >&2
+  if [ $mounted -gt 0 ]; then 
+    echo "Midia montada com sucesso : $backup_dev_disk em $_MEDIABACKUP." >&2
   else
-    echo "Unidade [$backup_dev_disk] em [$_MEDIABACKUP] não foi montada corretamente. [ \$? -le 0 ]" >&2
+    echo "Unidade [$backup_dev_disk] em [$_MEDIABACKUP] não foi montada corretamente. Funcao is_mount_disk \"$_MEDIABACKUP\" retornou $mounted" >&2
   fi
   mount_disk=$mounted
   return $mounted  
@@ -337,6 +397,13 @@ function umount_disk() {
 }
 
 function editar() {
+  # if editar "$_XENPATH/xenboot-lista.txt" ; then
+  #   echo "$_XENPATH/xenboot-lista.txt foi salvo"
+  #   $_SCRIPT_XENBOOTLISTA	"$_XENPATH/xenboot-lista.txt"		
+  # else
+  #   echo "$_XENPATH/xenboot-lista.txt foi ignorado"
+  # fi
+  
   local arquivo="$1"
   if ! [ -f "$arquivo" ] ; then
     echo "Nao achei o arquivo :"
@@ -464,9 +531,6 @@ function do_desmontar() {
   fi
   # so posso desmontar unidades em /mnt ou /media
   dir_to_unmount=$(mount |grep "$alvo"|cut -d" " -f 3|cut -d"/" -f 2)
-  #if [ "$dir_to_unmount" != "media" ] && [ "$dir_to_unmount" != "mnt" ] ; then
-  #  return
-  #fi
 
   local n=0
   local EXISTE=1
@@ -486,13 +550,14 @@ function do_desmontar() {
   if ! [[ "$alvo" =~ "/media" ]] ; then
     if [ -d "$alvo" ] && [ "$dir_to_unmount" = "mnt" ] ; then
       if [ "$alvo/*" = "$alvo/*" ] ; then
-        echo "Removendo diretorio vazio [$alvo]"
+        echo "Removendo diretorio vazio [$alvo]">&2
         rmdir $alvo
       fi
     fi
   fi
   RESULT_VALUE="OK"
   sleep 5s
+  echo $RESULT_VALUE  
 }
 
 # Fill e Pad fazem um echo com tamanho delimitado, ex:
@@ -503,40 +568,39 @@ function do_desmontar() {
 # resultará em :
 # [Description] - - - - - - - - - - - -[win]
 # [decription damn long]- - - - - - - -[lose]
-function fill()
-{
-    # fill string to width of count from string chars 
-    #
-    # usage:
-    #      fill count [chars]
-    #
-    # if count is zero a blank string is output
-    # chars is optional, spaces used if missing
-    #
-    local FILL="${2:- }"
-    for ((c=0; c<=$1; c+=${#FILL}))
-    do
-        echo -n "${FILL:0:$1-$c}"
-    done
+function fill() {
+  # fill string to width of count from string chars 
+  #
+  # usage:
+  #      fill count [chars]
+  #
+  # if count is zero a blank string is output
+  # chars is optional, spaces used if missing
+  #
+  local FILL="${2:- }"
+  for ((c=0; c<=$1; c+=${#FILL}))
+  do
+      echo -n "${FILL:0:$1-$c}"
+  done
 }
-function pad()
-{
-    # Pad to right of string to required width, using chars.
-    # Chars is repeated, as required, until width is reached.
-    #
-    # usage:
-    #      pad width string [chars]
-    #
-    # if chars not specified spaces are used
-    #
-    BACK=$(fill $1 "$3")
-    let PAD=$1-${#2}
-    if [ $PAD -lt 1 ] 
-    then
-        echo -n ${2:0:$1-1}
-    else
-        echo -n "$2${BACK:${#2}}"
-    fi
+
+function pad() {
+  # Pad to right of string to required width, using chars.
+  # Chars is repeated, as required, until width is reached.
+  #
+  # usage:
+  #      pad width string [chars]
+  #
+  # if chars not specified spaces are used
+  #
+  BACK=$(fill $1 "$3")
+  let PAD=$1-${#2}
+  if [ $PAD -lt 1 ] 
+  then
+      echo -n ${2:0:$1-1}
+  else
+      echo -n "$2${BACK:${#2}}"
+  fi
 }
 
 # Funcao space_free /dev/sdNN [gb]
@@ -570,32 +634,36 @@ function space_free() {
   # Filesystem           1K-blocks      Used Available Use% Mounted on
   # /dev/sdb1            1922858352 1909153628         0 100% /media/backup
   local lastline=$(/bin/df "$try_dev"|tail -n1)
+  echo -ne "Debug:\nlastline=$lastline\n" >&2
+  
   DevFilesystem=$(eval echo "$lastline"|cut -d ' ' -f 1)
   DevBlocks1k=$(eval echo "$lastline"|cut -d ' ' -f 2|tr  -d '[:alpha:]')
   DevUsed=$(eval echo "$lastline"|cut -d ' ' -f 3|tr  -d '[:alpha:]')
-  DevUsed=$(echo "((($DevUsed/1024)))" | bc -l)                                       # DevUsed em MB
-  [[ "$DevUsed" =~ "." ]] && DevUsed=$(eval echo "$DevUsed"|cut -d'.' -f1)            # Trunca a parte inteira se estiver fracionado
+  DevUsed=$(trunc $DevUsed);
+  DevUsed=$(echo "((($DevUsed/1024)))" | bc -l) # DevUsed em MB
   # DevUse em GB se for essa a necessidade
   if [ "$unit" == "GB" ] ; then
-    DevUsed=$(echo "((($DevUsed/1024)))" | bc -l)                
-    [[ "$DevUsed" =~ "." ]] && DevUsed=$(eval echo "$DevUsed"|cut -d'.' -f1)          # Trunca a parte inteira se estiver fracionado
+    DevUsed=$(echo "((($DevUsed/1024)))" | bc -l);
+    DevUsed=$(trunc $DevUsed);
   fi
-  if ! [[ $DevUsed =~ '^[0-9]+$' ]] ; then
-     DevUsed=0
-     echo "Variavel [DevUsed] não é um numero." >&2
+
+  if ! is_number $DevUsed ; then  
+     echo "Variavel [DevUsed=$DevUsed ] não é um numero, assumindo zero." >&2
+     DevUsed=0;
   fi  
   
   DevAvailable=$(eval echo "$lastline"|cut -d ' ' -f 4|tr  -d '[:alpha:]')
   DevAvailable=$(echo "((($DevAvailable/1024)))" | bc -l)                             # DevAvailable em MB
-  [[ "$DevAvailable" =~ "." ]] && DevAvailable=$(eval echo "$DevAvailable"|cut -d'.' -f1)     # Trunca a parte inteira se estiver fracionado
+  DevAvailable=$(trunc $DevAvailable);
+  
   # DevAvailable em GB se for essa a necessidade
   if [ "$unit" == "GB" ] ; then
     DevAvailable=$(echo "((($DevAvailable/1024)))" | bc -l)      
     [[ "$DevAvailable" =~ "." ]] && DevAvailable=$(eval echo "$DevAvailable"|cut -d'.' -f1)   # Trunca a parte inteira se estiver fracionado
   fi
-  if ! [[ $DevAvailable =~ '^[0-9]+$' ]] ; then
-     DevAvailable=0
-     echo "Variavel [DevAvailable] não é um numero." >&2
+  if ! is_number $DevAvailable ; then  
+    echo "Variavel [DevAvailable=$DevAvailable ] não é um numero, assumindo zero." >&2  
+    DevAvailable=0
   fi  
   DevUsePerc=$(eval echo "$lastline"|cut -d ' ' -f 5|tr  -d '[:alpha:]'|tr -d '%')
   DevMountedOn=$(eval echo "$lastline"|cut -d ' ' -f 6)
@@ -609,61 +677,73 @@ function space_free() {
 # Ou se quiser apenas a estimativa:
 # ESTIMATIVE=$(space_estimate "/root/xenbackup-list.txt")
 function space_estimate() {
-local FILE_VM_LIST="$1"
-local VERBOSE=0
-local VM_NAME=""
-local VM_SIZE=0
-local VM_EXISTE=0
-local DEFAULT_RETURN=0
-local NCOUNT=0
-ESTIMATIVE=0
-[ "$2" == "-v" ] && VERBOSE=1
+  local FILE_VM_LIST="$1"
+  local VERBOSE=0
+  local VM_NAME=""
+  local VM_SIZE=0
+  local VM_EXISTE=0
+  local DEFAULT_RETURN=0
+  local NCOUNT=0
+  local re='^[0-9]+$'
+  ESTIMATIVE=0
 
-if ! [ -f "$FILE_VM_LIST" ] ; then
-   echo "Arquivo inexistente: $FILE_VM_LIST" 1>&2;
-   echo $DEFAULT_RETURN
-   return
-fi
+  [ "$2" == "-v" ] && VERBOSE=1
 
-NCOUNT=$(cat "$FILE_VM_LIST"|grep -v "^#"|wc -l)
-if [ $NCOUNT -eq 0 ] ; then
-   echo "Arquivo indicado está vazio: $FILE_VM_LIST" 1>&2;
-   echo $DEFAULT_RETURN
-   return
-fi
-
-while read LINHA ; do
-  VM_NAME=$(semremarks "$LINHA")
-  if [ "$VM_NAME" != "" ] ; then
-    # Testa a existencia da VM_NAME e se a mesma possui um disco 
-    VM_EXISTE=$(xe vm-disk-list vbd-params=virtual-size vm=$VM_NAME --multiple|wc -l)
-    if [ $VM_EXISTE -gt 0 ] ; then 
-      #echo "xe vm-disk-list vbd-params=virtual-size vm=$VM_NAME --multiple|grep virtual-size|cut -d':' -f2"
-      VM_SIZE=$(xe vm-disk-list vbd-params=virtual-size vm=$VM_NAME --multiple|grep virtual-size|cut -d':' -f2)
-      VM_SIZE=$(echo "((($VM_SIZE/1024)/1024)/1024)" | bc -l)
-      VM_SIZE=$(echo "$VM_SIZE"|cut -d'.' -f1)
-      # Se o campo numero for invalido então...
-      if ! [[ $VM_SIZE =~ '^[0-9]+$' ]] ; then
-         VM_SIZE=0
-         echo "Variavel [VM_SIZE] não é um numero." >&2
-      fi  
-      ESTIMATIVE=$(echo "$ESTIMATIVE + $VM_SIZE" | bc -l)
-      #echo "debug mark #1 ESTIMATIVE=$ESTIMATIVE" 1>&2;
-      if [ $VERBOSE -gt 0 ] ; then
-        pad 50 "$VM_NAME" "." 
-        echo ": $VM_SIZE GB"
-      fi  
-      SIZE_BYTES=$((SIZE_BYTES+VM_SIZE))
-    fi
+  if ! [ -f "$FILE_VM_LIST" ] ; then
+     echo "Arquivo inexistente: $FILE_VM_LIST" >&2
+     echo $DEFAULT_RETURN
+     return
   fi
-done <"$FILE_VM_LIST"
-if [ $VERBOSE -gt 0 ] ; then
-  #echo "debug mark #1 ESTIMATIVE=$ESTIMATIVE" 1>&2;
-  pad 50 "Total estimado" "."  
-  echo ": $ESTIMATIVE GB"
-else
+
+  NCOUNT=$(cat "$FILE_VM_LIST"|grep -v "^#"|wc -l)
+
+  if [ $NCOUNT -eq 0 ] ; then
+     echo "Arquivo indicado está vazio: $FILE_VM_LIST" >&2
+     echo $DEFAULT_RETURN
+     return
+  fi
+
+  while read LINHA ; do
+    VM_NAME=$(semremarks "$LINHA")
+    if [ "$VM_NAME" != "" ] ; then
+      # Testa a existencia da VM_NAME e se a mesma possui um disco
+      [ $VERBOSE -gt 0 ] && echo -ne "Capturando existencia:\nxe vm-disk-list vbd-params=virtual-size vm=$VM_NAME --multiple|wc -l\n" >&2
+      VM_EXISTE=$(xe vm-disk-list vbd-params=virtual-size vm=$VM_NAME --multiple|wc -l)
+      if [ $VM_EXISTE -gt 0 ] ; then 
+        [ $VERBOSE -gt 0 ] && echo -ne "Capturando tamanho:\nxe vm-disk-list vbd-params=virtual-size vm=$VM_NAME --multiple|grep virtual-size|cut -d':' -f2\n" >&2
+        xe vm-disk-list vbd-params=virtual-size vm=$VM_NAME --multiple|grep virtual-size|cut -d':' -f2>"$FILE_VM_LIST.1"
+        while read LIST_DISKS ; do
+          VM_SIZE=$(semremarks "$LIST_DISKS") 
+          [ $VERBOSE -gt 0 ] && echo -ne "VM_SIZE=$VM_SIZE bytes -> " >&2
+          VM_SIZE=$(echo "((($VM_SIZE/1024)/1024)/1024)" | bc -l)
+          [ $VERBOSE -gt 0 ] && echo -ne "VM_SIZE=$VM_SIZE GB -> " >&2
+          if [[ $VM_SIZE == *"."* ]]; then
+            VM_SIZE=$(echo "$VM_SIZE"|cut -d'.' -f1)
+          fi
+          [ $VERBOSE -gt 0 ] && echo -ne "VM_SIZE=$VM_SIZE GB truncados\n" >&2
+          if ! [[ $VM_SIZE =~ $re ]] ; then
+             [ $VERBOSE -gt 0 ] && echo -ne "\nVM_SIZE=$VM_SIZE não é um valor valido.\n" >&2
+             VM_SIZE=0
+          fi
+          [ $VERBOSE -gt 0 ] && echo -ne "Soma acumulada:\necho \"$ESTIMATIVE + $VM_SIZE\" | bc -l\n" >&2
+          ESTIMATIVE=$(echo "$ESTIMATIVE + $VM_SIZE" | bc -l)
+          pad 50 "$VM_NAME" "." >&2;
+          echo ": $VM_SIZE GB" >&2;
+          if [ $VERBOSE -gt 0 ] ; then
+            echo -ne "Soma acumulada:\necho \"$ESTIMATIVE + $VM_SIZE\" | bc -l # $ESTIMATIVE\n" >&2;
+          fi  
+        done <"$FILE_VM_LIST.1"
+        rm -f "$FILE_VM_LIST.1"
+      fi
+    fi
+  done <"$FILE_VM_LIST"
+  if [ $VERBOSE -gt 0 ] ; then
+    pad 50 "Total estimado" "." >&2;
+    echo ": $ESTIMATIVE GB" >&2;
+  fi
+
   echo "$ESTIMATIVE"
-fi
+  return
 }
 
 # Nome: TransfVM2Disk_Online
@@ -692,11 +772,11 @@ function TransfVM2Disk_Online() {
   # VM existe?
   [ "$VM_NAME" != "" ] && vm_existe=$(xe vm-list|grep "$VM_NAME"|wc -l)
   if [ "$vm_existe" -le 0 ] ; then
-    echo "VM [%VM_NAME] não existe."  
+    echo "VM [%VM_NAME] não existe." >&2;
     return 2
   fi
   if ! [ -d "$DEST_FOLDER" ] ; then
-    echo "Pasta [%DEST_FOLDER] não existe."  
+    echo "Pasta [%DEST_FOLDER] não existe." >&2;
     return 2
   fi
   

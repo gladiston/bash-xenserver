@@ -26,7 +26,7 @@
 #
 . /root/xenfunctions.sh
 if [ $? -ne 0 ] ; then
-  wecho "Nao foi possivel importar o arquivo [/root/xenfunctions.sh] !"
+  echo "Nao foi possivel importar o arquivo [/root/xenfunctions.sh] !"
   exit 2;
 fi
 
@@ -34,6 +34,7 @@ fi
 # Inicio do Script
 #
 init_vars
+
 
 # Quando debug ligado, o backup não será transferido, porém a limpeza do disco acabará ocorrendo
 DEBUG=$_DEBUG
@@ -46,14 +47,14 @@ EXEC_FSCK=0
 # Confere se o backup já não está rodando e neste caso aborta a operação
 LINHAS=$(ps ax|grep "xe *vm-export* vm=snapshot"|grep -v "grep"|wc -l)
 if [ $LINHAS -gt 0 ] ; then
-  wecho "Há um backup em andamento, não posso executar novamente enquanto ele estiver em operação."
+  echo "Há um backup em andamento, não posso executar novamente enquanto ele estiver em operação." 
   exit 2
 fi
+
 
 # confere se um dos parametros é uma especificacao de arquivo
 ARQ_BACKUP_LISTA=""
 for CURRENT_PARAM in "$@" ; do
-  #CURRENT_PARAM=$(echo "$CURRENT_PARAM" | xargs)
   CURRENT_PARAM="${CURRENT_PARAM##*( )}"                                          # Trim
   if [ -f "$CURRENT_PARAM" ] ; then 
     if ! [[ "$CURRENT_PARAM" =~ "^-" ]] && [ "$ARQ_BACKUP_LISTA" == "" ] ; then
@@ -75,8 +76,10 @@ for CURRENT_PARAM in "$@" ; do
     EXEC_FSCK=0
   fi    
 done
+
 if [ "$ARQ_BACKUP_LISTA" == "" ] ; then
   ARQ_BACKUP_LISTA="/tmp/xenbackup-lista-local-$$.txt"
+  echo "$_SCRIPT_XENBACKUPESTIMATE -local |grep -v 'Total estimado' | tee '$ARQ_BACKUP_LISTA'" >&2;
   $_SCRIPT_XENBACKUPESTIMATE -local |grep -v "Total estimado" | tee "$ARQ_BACKUP_LISTA"
 fi
 
@@ -98,17 +101,17 @@ if [ $EXEC_FSCK -gt 0 ] ; then
 fi
 
 erro=0
-backup_title="Backup das maquinas virtuais em $HOSTNAME-$_DATE_START ($ARQ_BACKUP_LISTA)"
+backup_title="Backup das maquinas virtuais em $HOSTNAME-$_DATE_START ($ARQ_BACKUP_LISTA)" 
 
 # Arquivo de log
-_XENBACKUP_LOGFILE="/var/log/xen/xenbackup-$HOSTNAME-$_DATE_START.log"
+_XENBACKUP_LOGFILE="/var/log/xen/xenbackup-$HOSTNAME-$_DATE_START.log" 
 [ -f "$_XENBACKUP_LOGFILE" ] && rm -f "$_XENBACKUP_LOGFILE"
 
 # Avisando os terminais, que talvez se estiverem abertos de que o backup está se iniciando
 cab_msg="========== inicio do backup [ $HOSTNAME ] em $_DATE_START =============="
 cab_msg="$cab_msg\n$backup_title"
-cab_msg="$cab_msg\n$backup_title\nLog: $_XENBACKUP_LOGFILE"
-wecho "$cab_msg"
+cab_msg="$cab_msg\nLog: $_XENBACKUP_LOGFILE"
+echo -ne "$cab_msg\n"
 
 # Diretorio onde sera feito o backup. Pode ser via NFS...
 _BACKUP_FOLDER="$_MEDIABACKUP/$_DATE_START"
@@ -122,41 +125,48 @@ fi
 # Desmontando a midia de backup, se a mesma estiver montada.
 is_mount_disk "$_MEDIABACKUP"
 if [ $? -gt 0 ] ; then
-  wecho "Mídia de backup já estava montada e provavelmente em uso, não posso prosseguir."
+  echo "Mídia de backup já estava montada e provavelmente em uso, não posso prosseguir."=
   sair 2
 fi
-
 
 if [ $try_fsck -gt 0 ] ; then
   echo "Executando checagem de disco em $backup_dev_disk..." | tee -a "$_XENBACKUP_LOGFILE"
   /sbin/fsck -vfy $backup_dev_disk | tee -a "$_XENBACKUP_LOGFILE"
   if [ $? -eq 0 ] ; then
-    wecho "Checagem de disco (fsck) foi executado em $backup_dev_disk e não encontrou nenhum problema."  
+    echo "Checagem de disco (fsck) foi executado em $backup_dev_disk e não encontrou nenhum problema."
   else
-    wecho "Checagem de disco (fsck) foi executado em $backup_dev_disk e fez reparos."
+    echo "Checagem de disco (fsck) foi executado em $backup_dev_disk e fez reparos." 
   fi
 fi
 
-Montando a midia de backup
+
+# Montando a midia de backup
 mount_disk
 if [ $? -gt 0 ] ; then 
-  wecho "Foi detectado midia de backup montada em $_MEDIABACKUP..."
+  echo "Foi detectado midia de backup montada em $_MEDIABACKUP..."
 else 
-  wecho "Nao foi detectado midia de backup montada em $_MEDIABACKUP..."
+  echo "Nao foi detectado midia de backup montada em $_MEDIABACKUP..."
   sair 2;  
 fi
 
-#echo "Debug: $_SCRIPT_XENBACKUPESTIMATE \"$ARQ_BACKUP_LISTA\""
+
+echo -ne "Debug:\n$_SCRIPT_XENBACKUPESTIMATE \"$ARQ_BACKUP_LISTA\"\n"  >&2;
 _WANT_SPACE=$($_SCRIPT_XENBACKUPESTIMATE "$ARQ_BACKUP_LISTA")
+
+echo -ne "Retornou:\n$_WANT_SPACE\n" >&2;
 if [[ "$_WANT_SPACE" =~ "Total estimado" ]] ; then
   _WANT_SPACE=$(echo "$_WANT_SPACE"|grep 'Total estimado'|cut -d':' -f2|cut -d'G' -f1|tr -d '[:alpha:]'|tr -d '[:space:]')
 fi
+
 # Se nao retornar nenhum numero então...
-if ! [[ $_WANT_SPACE =~ '^[0-9]+$' ]] ; then
-   wecho "Não foi possivel calcular o tamanho estimado para o backup: $_WANT_SPACE" >&2
-   wecho "Variavel _WANT_SPACE não é um numero." >&2
+echo "_WANT_SPACE=$_WANT_SPACE"   >&2;
+if ! is_number $_WANT_SPACE; then
+   echo "Não foi possivel calcular o tamanho estimado para o backup: $_WANT_SPACE"  
+   echo "Variavel _WANT_SPACE não é um numero."  
    sair 2
-fi  
+fi
+
+
 
 # Limpeza de backup aumentará o espaço em disco para os novos backups, 
 # Mas a limpeza só ocorrerá se o disco estiver com menos de $_WANT_SPACE Gigas disponiveis
@@ -169,38 +179,39 @@ DevAvailable1=$DevAvailable
 DevUsePerc1=$DevUsePerc
 DevMountedOn1=$DevMountedOn
 if [ "$DevFilesystem1" == "-" ] || [ "$DevFilesystem1" == "" ] ; then
-  wecho "Processo interrompido porque nao pude observar espaço livre em $backup_dev_disk..."
+  echo "Processo interrompido porque nao pude observar espaço livre em $backup_dev_disk..." 
   sair 2;  
 fi
-echo "Espaço no disco de backup antes da limpeza em $DevFilesystem1:"
-echo -e "\tEspaço usado: $DevUsed1 GB ($DevUsePerc1%)"
-echo -e "\tEspaço disp.: $DevAvailable1 GB"
-echo -e "\tEspaço req.: $_WANT_SPACE GB"
+echo "Espaço no disco de backup antes da limpeza em $DevFilesystem1:"  
+echo -e "\tEspaço usado: $DevUsed1 GB ($DevUsePerc1%)"  
+echo -e "\tEspaço disp.: $DevAvailable1 GB" 
+echo -e "\tEspaço req.: $_WANT_SPACE GB" 
 espaco_disponivel=$DevAvailable1
 
 # Se nao retornar nenhum numero para a variavel então...
-if ! [[ $espaco_disponivel =~ '^[0-9]+$' ]] ; then
-   wecho "Não foi possivel calcular o espaço estimado no disco para realização do backup: $espaco_disponivel" >&2
-   wecho "Variavel [espaco_disponivel] não é um numero." >&2
+#if ! [[ $espaco_disponivel =~ '^[0-9]+$' ]] ; then
+if ! is_number $espaco_disponivel ; then
+   echo "Não foi possivel calcular o espaço estimado no disco para realização do backup: $espaco_disponivel"  
+   echo "Variavel [espaco_disponivel] não é um numero."  
    sair 2
 fi  
 
 if [ $espaco_disponivel -lt $_WANT_SPACE ] ; then
   do_clean=1
-  echo "A limpeza do disco esta sendo exigida porque há $espaco_disponivel GB disponíveis (requer $_WANT_SPACE GB)."
+  echo "A limpeza do disco esta sendo exigida porque há $espaco_disponivel GB disponíveis (requer $_WANT_SPACE GB)." 
 else
-  echo "A limpeza do disco não será necessária porque há $espaco_disponivel GB disponíveis (requer $_WANT_SPACE GB)."  
+  echo "A limpeza do disco não será necessária porque há $espaco_disponivel GB disponíveis (requer $_WANT_SPACE GB)." 
 fi
 
 if [ $do_clean -gt 0 ] ; then
   if [ -f "$_SCRIPT_XENCLEAN" ] ; then
     if [ $DEBUG -le 0 ] ; then
-      echo "Debug: $_SCRIPT_XENCLEAN \"$ARQ_BACKUP_LISTA\" \"-log:$_XENBACKUP_LOGFILE\"" 1>&2;
+      echo "Debug: $_SCRIPT_XENCLEAN \"$ARQ_BACKUP_LISTA\" \"-log:$_XENBACKUP_LOGFILE\"" 
       $_SCRIPT_XENCLEAN "$ARQ_BACKUP_LISTA" "-min:$_WANT_SPACE"
     fi
     is_mount_disk "$_MEDIABACKUP"
     if [ $? -le 0 ] ; then 
-      echo "disco $_MEDIABACKUP esta desmontado, montando-o..."
+      echo "disco $_MEDIABACKUP esta desmontado, montando-o..." 
       mount_disk
     fi
     space_free "$backup_dev_disk" "GB"
@@ -211,26 +222,24 @@ if [ $do_clean -gt 0 ] ; then
     DevUsePerc2=$DevUsePerc
     DevMountedOn2=$DevMountedOn
     if [ "$DevFilesystem2" == "-" ] ; then
-      wecho "Processo interrompido porque nao pude observar espaço livre em $backup_dev_disk..."
+      echo "Processo interrompido porque nao pude observar espaço livre em $backup_dev_disk..."  
       sair 2;  
     fi
-    echo "Espaço no disco de backup antes da limpeza em $DevFilesystem1:"
-    echo -e "\tEspaço usado: $DevUsed1 GB ($DevUsePerc1%) para $DevUsed2 GB ($DevUsePerc2%)"
-    echo -e "\tEspaço disp.: $DevAvailable1 GB para $DevAvailable2 GB"
-    echo -e "\tEspaço req.: $_WANT_SPACE GB"
+    echo "Espaço no disco de backup antes da limpeza em $DevFilesystem1:" 
+    echo -e "\tEspaço usado: $DevUsed1 GB ($DevUsePerc1%) para $DevUsed2 GB ($DevUsePerc2%)" 
+    echo -e "\tEspaço disp.: $DevAvailable1 GB para $DevAvailable2 GB" 
+    echo -e "\tEspaço req.: $_WANT_SPACE GB" 
     espaco_disponivel=$DevAvailable2
     if [ $espaco_disponivel -lt $_WANT_SPACE ] ; then
-      wecho "A limpeza do disco não foi suficiente para iniciar a execução do backup."
-      sair 2;
+      echo "A limpeza do disco não foi suficiente para iniciar a execução do backup." 
+      echo "2021-01-12 alteração para prosseguir assim mesmo." 
+      #sair 2;
     fi
   else
-    echo "Limpeza nao foi realizada porque nao achei o script $_SCRIPT_XENCLEAN"
+    echo "Limpeza nao foi realizada porque nao achei o script $_SCRIPT_XENCLEAN" 
   fi
 fi
 
-#echo "Debug - saindo"  1>&2;
-#sair $erro;
-#exit 0;
 
 # As linhas abaixo com respeito a sintaxe foi baseado noutro script
 # que pode ser obtido no site :
@@ -256,7 +265,7 @@ fi
 
 is_mount_disk "$_MEDIABACKUP"
 if [ $? -le 0 ]; then 
-  wecho "Disco $_MEDIABACKUP esta desmontado, não posso prosseguir com o backup..."
+  echo "Disco $_MEDIABACKUP esta desmontado, não posso prosseguir com o backup..." 
   sair 2
 fi
 
@@ -297,17 +306,16 @@ done <"$ARQ_BACKUP_LISTA"
 # qual aquele backup foi realizado.
 is_mount_disk "$_MEDIABACKUP"
 if [ $? -le 0 ] ; then
-  wecho "Mídia de backup já estava desmontada quase na parte conclusiva do script, por isso não posso prosseguir com o backup de scripts e envio de emails para os gestores." | tee -a "$_XENBACKUP_LOGFILE"
+  echo "Mídia de backup já estava desmontada quase na parte conclusiva do script, por isso não posso prosseguir com o backup de scripts e envio de emails para os gestores." | tee -a "$_XENBACKUP_LOGFILE"
   sair 2
 fi
 FILE_TMP=$(mktemp "/tmp/xenbackup-copy-scripts-XXXXXXXX")
-wecho "Copiando scripts utilizados para a unidade de backup $_BACKUP_FOLDER"
-#echo "find \"$(dirname $_SCRIPT_XENBACKUP)/\"*.sh"
+echo "Copiando scripts utilizados para a unidade de backup $_BACKUP_FOLDER"
+
 find "$(dirname $_SCRIPT_XENBACKUP)/"*.sh > "$FILE_TMP"
 while read THIS_SCRIPT ; do
   [ -f "$_BACKUP_FOLDER/$(basename $THIS_SCRIPT)" ] && mv -f "$_BACKUP_FOLDER/$(basename $THIS_SCRIPT)" "$_BACKUP_FOLDER/$(basename $THIS_SCRIPT).$_DATE_START"
   cp -f "$THIS_SCRIPT" "$_BACKUP_FOLDER/"
-  #[ $? -eq 0 ] && echo -e "\t\t[OK] $_BACKUP_FOLDER/$THIS_SCRIPT"
 done < "$FILE_TMP"
 [ -f "$_BACKUP_FOLDER/$(basename $ARQ_BACKUP_LISTA)" ] && mv -f "$_BACKUP_FOLDER/$(basename $ARQ_BACKUP_LISTA)" "$_BACKUP_FOLDER/$(basename $ARQ_BACKUP_LISTA).$_DATE_START"
 cp -f "$ARQ_BACKUP_LISTA" "$_BACKUP_FOLDER/$(basename $ARQ_BACKUP_LISTA)"

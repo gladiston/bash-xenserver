@@ -24,7 +24,8 @@ xenbackup_all=$(ps ax|grep "xenbackup-all.sh"|grep -v "grep")
 xenbackup_all="${xenbackup_all##*( )}"                                          # Trim
 xenbackup_all_pid=$(eval echo "$xenbackup_all"|cut -d " " -f1)
 # Se nao retornar numero entao assume 0
-if ! [[ $xenbackup_all_pid =~ '^[0-9]+$' ]] ; then
+#if ! [[ $xenbackup_all_pid =~ '^[0-9]+$' ]] ; then
+if ! is_number $xenbackup_all_pid ; then 
    xenbackup_all_pid=0
 else 
    xenbackup_all=$(ps -p $xenbackup_all_pid -o start,etime,cmd|tail -n1)
@@ -36,7 +37,8 @@ fi
 xenbackup=$(ps ax|grep "xenbackup.sh"|grep -v "grep")
 xenbackup="${xenbackup##*( )}"                                          # Trim
 xenbackup_pid=$(eval echo "$xenbackup"|cut -d " " -f1)
-if ! [[ $xenbackup_pid =~ '^[0-9]+$' ]] ; then
+#if ! [[ $xenbackup_pid =~ '^[0-9]+$' ]] ; then
+if ! is_number $xenbackup_pid ; then 
    xenbackup_pid=0
 else 
    xenbackup=$(ps -p $xenbackup_pid -o start,etime,cmd|tail -n1)
@@ -47,7 +49,8 @@ fi
 vm_export=$(ps ax|grep "xe *vm-export* vm=snapshot"|grep -v "grep")
 vm_export="${vm_export##*( )}"      
 vm_export_pid=$(eval echo "$vm_export"|cut -d " " -f1)
-if ! [[ $vm_export_pid =~ '^[0-9]+$' ]] ; then
+#if ! [[ $vm_export_pid =~ '^[0-9]+$' ]] ; then
+if ! is_number $vm_export_pid ; then 
    vm_export_pid=0
 else 
    vm_export=$(ps -p $vm_export_pid -o start,etime,cmd|tail -n1)
@@ -58,7 +61,8 @@ fi
 fsck=$(ps ax|grep "fsck"|grep -e ".ext[2-5]"|grep "$backup_dev_disk")
 fsck="${fsck##*( )}"      
 fsck_pid=$(eval echo "$fsck"|cut -d " " -f1)
-if ! [[ $fsck_pid =~ '^[0-9]+$' ]] ; then
+#if ! [[ $fsck_pid =~ '^[0-9]+$' ]] ; then
+if ! is_number $fsck_pid ; then 
    fsck_pid=0
 else 
    fsck=$(ps -p $fsck_pid -o start,etime,cmd|tail -n1)

@@ -36,14 +36,16 @@ for CURRENT_PARAM in "$@" ; do
   if [[ "$CURRENT_PARAM" =~ "^halted=" ]] ; then
     HALTED_YESNO=$(eval echo "$CURRENT_PARAM"|cut -d'=' -f2)
     # Se nao retornar nenhum numero então...
-    if ! [[ $HALTED_YESNO =~ '^[0-9]+$' ]] ; then
+    #if ! [[ $HALTED_YESNO =~ '^[0-9]+$' ]] ; then
+    if ! is_number $HALTED_YESNO ; then
        HALTED_YESNO=-1
     fi  
   fi
   if [[ "$CURRENT_PARAM" =~ "^edit=" ]] ; then
     EDIT_YESNO=$(eval echo "$CURRENT_PARAM"|cut -d'=' -f2)
     # Se nao retornar nenhum numero então...
-    if ! [[ $EDIT_YESNO =~ '^[0-9]+$' ]] ; then
+    #if ! [[ $EDIT_YESNO =~ '^[0-9]+$' ]] ; then
+    if ! is_number $EDIT_YESNO ; then
        EDIT_YESNO=-1
     #else 
     #   [$EDIT_YESNO -gt 0 ] && UPDATELIST_YESNO=1    
@@ -52,14 +54,16 @@ for CURRENT_PARAM in "$@" ; do
   if [[ "$CURRENT_PARAM" =~ "^local=" ]] ; then
     ONLY_LOCAL=$(eval echo "$CURRENT_PARAM"|cut -d'=' -f2)
     # Se nao retornar nenhum numero então...
-    if ! [[ $ONLY_LOCAL =~ '^[0-9]+$' ]] ; then
+    #if ! [[ $ONLY_LOCAL =~ '^[0-9]+$' ]] ; then
+    if ! is_number $ONLY_LOCAL ; then
        ONLY_LOCAL=-1
     fi  
   fi  
   if [[ "$CURRENT_PARAM" =~ "^update=" ]] ; then
     UPDATELIST_YESNO=$(eval echo "$CURRENT_PARAM"|cut -d'=' -f2)
     # Se nao retornar nenhum numero então...
-    if ! [[ $UPDATELIST_YESNO =~ '^[0-9]+$' ]] ; then
+    #if ! [[ $UPDATELIST_YESNO =~ '^[0-9]+$' ]] ; then
+    if ! is_number $UPDATELIST_YESNO ; then
        UPDATELIST_YESNO=-1
     fi  
   fi   
@@ -115,7 +119,8 @@ space_required=0
 space_required=$(space_estimate "$_BACKUP_LIST")
 #space_required=$($_SCRIPT_XENBACKUPESTIMATE "$_BACKUP_LIST"|grep "Total estimado"|cut -d':' -f2|cut -d'G' -f1|tr -d ' ')
 # Se nao retornar nenhum numero então...
-if ! [[ $space_required =~ '^[0-9]+$' ]] ; then
+#if ! [[ $space_required =~ '^[0-9]+$' ]] ; then
+if ! is_number $space_required ; then
    echo "Não foi possivel calcular o tamanho requerido: $space_required" >&2
    echo "Variavel [space_required] não é um numero." >&2
    exit 2

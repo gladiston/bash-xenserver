@@ -57,7 +57,9 @@ function pad()
 
 
 vm_name=$1
+vm_name=$(echo -e "${vm_name}" | tr -d '[:space:]')
 vm_boot=$2
+vm_boot=$(echo -e "${vm_boot}" | tr -d '[:space:]')
 vm_boot_old=""
 vm_uuid=""
 _HOST_UUID=$(xe host-list params=uuid hostname=$HOSTNAME|cut -d':' -f2|grep -v '^$'|tr -d '^ ')
@@ -76,6 +78,8 @@ fi
 
 if [ $vm_boot != "true" ] && [ $vm_boot != "false" ] && [ $vm_boot != "status" ] ; then
   echo "O segundo parametro deve ser true ou false para ligar ou desligar o auto_poweron."
+  echo "Voce tentou:"
+  echo "$0 $vm_name $vm_boot"
   exit 2;
 fi
 #
