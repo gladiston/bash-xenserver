@@ -1,0 +1,11 @@
+### Bash ###
+*.bak
+*.sh.old
+
+### SSH ###
+**/.ssh/id_*
+**/.ssh/*_id_*
+**/.ssh/known_hosts
+
+# Xen
+xenbackup-list.txt
