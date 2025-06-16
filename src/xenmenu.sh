@@ -15,6 +15,7 @@ executar_script() {
     sudo "$script"
   else
     echo "❌ Script não encontrado: $script"
+    read -p "Pressione ENTER para continuar..."
   fi
 }
 
@@ -45,6 +46,16 @@ if [ ! -f "$CONF_FILE" ]; then
   echo '# Manter sempre os ultimos N backups independente da data' >>"$CONF_FILE"
   echo 'KEEP_COUNT=3' >>"$CONF_FILE"  
 fi
+
+# CARREGAR ARQUIVO DE CONFIGURAÇÃO
+CONF_FILE="/etc/xenbackup2.conf"
+if [ ! -f "$CONF_FILE" ]; then
+  echo "Falta o arquivo de configuração: $CONF_FILE"
+  exit 2;
+fi
+
+# carregando o arquivo de configuração dos EMAILS de notificação de sucesso e falha
+source "$CONF_FILE"
 
 clear
 while :
@@ -145,7 +156,7 @@ do
     executar_script "$_XENPATH/check_disco.sh"
     ;;
   97)
-    bash "$_XENPATH/check_uptime.sh"      
+    executar_script "$_XENPATH/check_uptime.sh"   
     ;;
   98)
     bash
