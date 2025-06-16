@@ -136,7 +136,7 @@ do
     pausar
     ;;
   94)
-    sudo vim /etc/xenbackup2.conf
+    sudo nano /etc/xenbackup2.conf
     ;;
   95)
     sudo crontab -e
