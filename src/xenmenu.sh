@@ -5,8 +5,6 @@
 # Atualização: 23/05/2025
 # Autor: Gladiston Santana <gladiston.santana[em]gmail.com>
 
-_XENPATH="$(dirname "$0")"  # ou /root
-
 #
 # Funcoes
 #
