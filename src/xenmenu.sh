@@ -39,7 +39,7 @@ if [ ! -f "$CONF_FILE" ]; then
   echo '# Quando gerar FALHA para quem devo enviar uma notificação por email:' >>"$CONF_FILE"
   echo 'EMAILS_FAIL="ficticio-fail1@exemplo.com ficticio-fail2@exemplo.com"' >> "$CONF_FILE"
   echo '# Dominio padrao para e-mails quando omitido' >> "$CONF_FILE"
-  echo 'EMAILS_DOMAIN="vidycorp.com.br"' >> "$CONF_FILE"
+  echo 'EMAILS_DOMAIN="dominio.com.br"' >> "$CONF_FILE"
   echo '# Pasta para preferir as montagens de discos de backup:' >>"$CONF_FILE"
   echo 'MOUNT_LOCAL="/mnt/xenbackup"' >>"$CONF_FILE"
   echo '# No Backup quantos dias serão retidos' >>"$CONF_FILE"
